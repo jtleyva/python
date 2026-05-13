@@ -1,52 +1,5 @@
 # Guía de Conceptos de Frontend, JavaScript y Vue.js para Entrevista Técnica
 
-## 1. Fundamentos de Frontend
-
-- **HTML**: Estructura básica de las páginas web. Semántica, etiquetas principales, formularios, accesibilidad.
-- **CSS**: Estilos, selectores, especificidad, box model, flexbox, grid, responsive design, preprocesadores (Sass, Less).
-- **JavaScript**: Lenguaje de programación principal del navegador. Manipulación del DOM, eventos, asincronía, promesas, fetch API.
-- **Web APIs**: LocalStorage, SessionStorage, Service Workers, WebSockets, APIs de geolocalización, etc.
-- **Performance**: Lazy loading, optimización de imágenes, minimización de recursos, critical rendering path.
-- **Accesibilidad (a11y)**: Buenas prácticas, atributos ARIA, navegación por teclado.
-- **SEO básico**: Meta tags, sitemap, robots.txt, SSR vs CSR.
-
-## 2. JavaScript Profundo
-
-- **Tipos de datos**: Primitivos, objetos, arrays, funciones.
-- **Scope y Hoisting**: Var, let, const, closures, contexto de ejecución.
-- **This**: Cómo funciona en distintos contextos, bind, call, apply.
-- **Funciones**: Declarativas, expresiones, arrow functions, callbacks, IIFE.
-- **Asincronía**: Callbacks, Promesas, async/await, manejo de errores.
-- **Event Loop**: Stack, heap, queue, microtasks vs macrotasks.
-- **Módulos**: CommonJS, ES Modules (import/export).
-- **Prototipos y Herencia**: Prototype chain, clases ES6, super, extends.
-- **Manipulación del DOM**: querySelector, addEventListener, creación y eliminación de nodos.
-- **JSON**: Serialización y deserialización, diferencias con objetos JS.
-- **Testing**: Vitest, Jest, Mocha, testing de componentes y funciones.
-
-## 3. Vue.js (v2 y v3)
-
-- **Instancia de Vue**: Ciclo de vida, hooks principales (created, mounted, updated, destroyed).
-- **Componentes**: Props, eventos personalizados, slots, scoped slots, composición de componentes.
-- **Reactividad**: Data, computed, watch, diferencias entre v2 y v3 (Composition API: ref, reactive, setup).
-- **Directivas**: v-if, v-for, v-bind, v-model, v-on, directivas personalizadas.
-- **Gestión de Estado**: Vuex (v2), Pinia (v3), patrones de lifting state up.
-- **Ruteo**: Vue Router, rutas anidadas, navegación programática, guards.
-- **Comunicación entre componentes**: Props, eventos, provide/inject, event bus (anti-patrón).
-- **Plugins y Ecosistema**: Uso de plugins, librerías de UI (Vuetify, Element), internacionalización.
-- **Testing en Vue**: Vue Test Utils, testing de componentes, mocks y spies.
-- **SSR y SSG**: Nuxt.js, diferencias entre renderizado del lado del cliente y del servidor.
-
-## 4. Herramientas y Buenas Prácticas
-
-- **Control de versiones**: Git, flujos de trabajo (feature branch, pull requests).
-- **Bundlers**: Webpack, Vite, diferencias y casos de uso.
-- **Linting y Formateo**: ESLint, Prettier.
-- **CI/CD**: Automatización de pruebas y despliegues.
-- **Documentación**: Storybook, documentación de componentes.
-
----
-
 ## 1.1 Preguntas Comunes de HTML
 
 - ¿Qué es el DOM y cómo se relaciona con HTML?
@@ -74,6 +27,16 @@
 - ¿Cómo funciona la especificidad en CSS?
 
   Respuesta: La especificidad se calcula como un vector de tres componentes `(A, B, C)` donde A = número de IDs, B = número de clases/atributos/pseudoclases, C = número de tipos/pseudoelementos. Se comparan de izquierda a derecha: `(1,0,0)` siempre gana a `(0,99,99)`. El `!important` rompe este sistema y crea su propio orden de cascada — su uso indiscriminado es una **deuda técnica seria** en proyectos grandes. Para senior: entender la **cascade** completa (origen, importancia, especificidad, orden) y saber que el `inline style` tiene especificidad `(1,0,0,0)` (cuatro componentes cuando se incluye `!important`). Estrategias como BEM, CSS Modules o utility-first (Tailwind) existen precisamente para evitar guerras de especificidad.
+  - Qué significa las medidas hv, dhv, lvh, svh, dvh?
+    Respuesta: Estas son unidades de medida relacionadas con la altura de la ventana gráfica (viewport) en CSS, introducidas para abordar problemas específicos con el manejo de la altura en dispositivos móviles:
+  - `vh`: representa el 1% de la altura del viewport. Sin embargo, en dispositivos móviles, el valor de `vh` puede cambiar dinámicamente debido a la aparición o desaparición de la barra de navegación, lo que puede causar problemas de diseño.
+  - `lvh`: representa la altura del viewport cuando la barra de navegación está visible.
+  - `svh`: representa la altura del viewport cuando la barra de navegación está oculta.
+  - `dvh`: representa la altura del viewport que se ajusta dinámicamente a los cambios en la barra de navegación, proporcionando una medida más consistente en dispositivos móviles.
+
+- Como se comportan los em, rem, % y px en CSS?
+
+  Respuesta: `px` es una unidad absoluta que representa un píxel en la pantalla. `em` es una unidad relativa que se basa en el tamaño de fuente del elemento padre; por ejemplo, `2em` significa el doble del tamaño de fuente del padre. `rem` es similar a `em`, pero se basa en el tamaño de fuente raíz (generalmente el `<html>`), lo que lo hace más predecible para diseños globales. `%` es una unidad relativa que se basa en el tamaño del elemento contenedor; por ejemplo, `50%` significa la mitad del tamaño del contenedor.
 
 - ¿Qué es el responsive design y cómo se implementa?
 
@@ -207,6 +170,12 @@
 - ¿Qué es el ciclo de vida de un componente en Vue.js?
 
   Respuesta: El ciclo de vida de un componente en Vue.js se refiere a las etapas por las que pasa un componente desde su creación hasta su destrucción. Las etapas principales incluyen: `beforeCreate`, `created`, `beforeMount`, `mounted`, `beforeUpdate`, `updated`, `beforeDestroy`, y `destroyed`. Cada etapa tiene hooks específicos que permiten ejecutar código en momentos clave del ciclo de vida del componente.
+
+  Resumen de etapas:
+  - **beforeCreate / created**: inicialización de datos, sin acceso al DOM.
+  - **beforeMount / mounted**: el componente se renderiza en el DOM; `mounted` es ideal para inicializar listeners o fetch de datos.
+  - **beforeUpdate / updated**: el componente re-renderiza por cambios en datos; útil para comparar valores antiguos y nuevos.
+  - **beforeDestroy / destroyed**: limpieza de listeners, timers y suscripciones antes de que el componente se elimine.
 
 - ¿Cómo se comunican los componentes en Vue.js?
 
