@@ -1,55 +1,47 @@
-# Brasil - Eye tracking y procesamiento en tiempo real
+# Brasil - Procesamiento en tiempo real y concurrencia (2015-2017)
 
-Empecé trabajando con Python en un proyecto entre 2015 y 2017 en Brasil, enfocado en eye-tracking para ayudar a personas con movilidad reducida a escribir con la mirada. Ahí trabajábamos con procesamiento en tiempo real y usamos concurrencia con hilos para separar la captura de datos del procesamiento, evitando bloquear la interacción del usuario. Fue mi primer contacto con problemas de sincronización y rendimiento.
+> Empecé mi etapa técnica fuerte en un proyecto en Brasil enfocado en procesamiento de imágenes en tiempo real (eye-tracking).
+> Fue un entorno muy exigente donde aprendí a lidiar con concurrencia a bajo nivel. Separamos la captura de datos del análisis usando hilos en Python para no bloquear nunca al usuario.
+> Ahí me enfrenté por primera vez a problemas de sincronización y rendimiento. El verdadero reto fue evitar condiciones de carrera, lo cual resolvimos diseñando estructuras thread-safe y controlando estrictamente el acceso a datos compartidos para asegurar que el sistema no se colgara bajo ninguna circunstancia.
 
-_scikit-learn - Raw eye-tracking data (gaze position, pupil size, timestamps) is captured from devices like Pupil Labs headsets, Tobii, or webcams using tools like OpenCV and MediaPipe._
+_Notas técnicas para la entrevista:_
 
-_scipy - NumPy - para optimización, interpolación, transformadas de Fourier, procesamiento de señales e imágenes_
+- _Herramientas: OpenCV, MediaPipe, scikit-learn, scipy, NumPy (optimización y procesamiento de señales)._
+- _Manejo del GIL: No era un problema crítico porque muchas operaciones eran I/O-bound o estaban apoyadas en librerías optimizadas en C, lo que nos daba suficiente paralelismo._
 
-> En el proyecto de eye-tracking teníamos un flujo en tiempo real donde necesitábamos capturar continuamente datos de la mirada y procesarlos sin bloquear la interacción.
+# AWS y arquitecturas distribuidas (Plataforma transaccional)
 
-> Para eso usamos concurrencia con hilos en Python, separando principalmente dos responsabilidades:
-> un hilo encargado de la captura de datos desde el dispositivo otro hilo para el procesamiento y análisis
+> Más adelante, di el salto a un rol más full-stack en una plataforma transaccional de alta demanda. Aquí el ecosistema era más heterogéneo: el core del backend estaba construido en Node.js, interactuando con interfaces de usuario y paneles de control desarrollados en Angular, mientras que integrábamos microservicios en Python para tareas específicas.
+> En este proyecto el reto cambió: el foco principal era la resiliencia y la escalabilidad de todo el sistema. Diseñamos esta arquitectura basándonos en microservicios contenerizados en AWS (ECS).
+> Nos enfocamos mucho en el desacoplamiento. Para la comunicación síncrona estricta entre servicios usábamos APIs REST, pero diseñamos la mayor parte del flujo guiado por eventos para evitar que el backend bloqueara el frontend en Angular. Por ejemplo, utilizábamos RabbitMQ para el enrutamiento complejo (Pub/Sub) de estados transaccionales entre el core de Node y los servicios en Python. Por otro lado, delegábamos a AWS SQS las cargas de trabajo asíncronas más pesadas o de procesamiento diferido, como la generación de reportes en background o el envío masivo de notificaciones.
+> Al tener un sistema tan distribuido, la observabilidad era crítica. Centralizamos métricas y logs en CloudWatch y configuramos alarmas integradas directamente con nuestros canales de Slack. Esto nos daba alertas tempranas ante cualquier pico de latencia, fallos en las colas o aumento en la tasa de errores, permitiendo al equipo de ingeniería reaccionar de forma proactiva antes de que escalara a un incidente para el usuario final.
+> A nivel de infraestructura, gestionábamos el tráfico utilizando Balanceadores de carga. Configuramos el balanceo para distribuir las peticiones hacia los contenedores mediante algoritmos de enrutamiento como Round Robin. Esto nos permitía escalar horizontalmente la capacidad de forma automática según la carga real del sistema. Para los procesos intermitentes, seguíamos delegando en Serverless (Lambda) para optimizar recursos.
+> El CI/CD lo teníamos implementado utilizando AWS CDK como Infraestructura como Código (IaC) integrado con pipelines en Jenkins. Esto nos permitía definir la infraestructura mediante código y automatizar todo el ciclo: desde la construcción de las imágenes Docker y subida a ECR, hasta el despliegue automático configurando las Task Definitions y los servicios en ECS. Así asegurábamos que tanto la provisión como los despliegues fueran siempre inmutables, predecibles y versionados.
 
-> Esto nos permitía que la captura fuera continua, sin verse afectada por el tiempo de procesamiento.
+_Notas técnicas para la entrevista:_
 
-> Aunque Python tiene el GIL, en este caso no era un problema porque muchas operaciones eran I/O-bound o estaban apoyadas en librerías optimizadas, así que el uso de threads nos daba suficiente paralelismo.
+- _Stack: Node.js (Core APIs), Angular (Frontend / Paneles de control), Python/FastAPI (Microservicios)._
+- _Comunicación: REST (síncrona), RabbitMQ (eventos core / Pub-Sub), SQS (tareas background pesadas), Redis (caché)._
+- _Observabilidad: CloudWatch integrado con webhooks de Slack para alertas tempranas sobre latencias y errores de consumo._
+- _CI/CD: Jenkins + AWS CDK (IaC). Pipeline: Build Docker -> Push a ECR -> Generación/Actualización de Task Definitions -> Despliegue en ECS._
+- _ECS vs Lambda: Preferimos ECS para tráfico constante y control de recursos; Lambda para cargas asíncronas orientadas a eventos._
 
-> El principal reto fue la sincronización entre hilos y evitar condiciones de carrera, que resolvimos con estructuras thread-safe y controlando bien el acceso a los datos compartidos.
+# Arquitectura de microservicios y tolerancia a fallos (Sistema de Onboarding)
 
-# AWS y microservicios
+> En mi etapa más reciente, co-lideré la arquitectura de un sistema de microservicios bastante complejo para una plataforma de onboarding. Teníamos un core en Node.js y un ecosistema de orquestación en Python con FastAPI. Para escalar el desarrollo y asegurar la mantenibilidad, estructuramos los servicios basándonos en Arquitectura Hexagonal. Esto nos permitió aislar la lógica de negocio de la infraestructura y tener dominios muy bien definidos, lo que fue clave para que distintos equipos pudieran trabajar en nuevas features de forma paralela y totalmente desacoplada.
+> El enfoque principal no era solo resolver la lógica, sino construir un sistema altamente predecible y tolerante a fallos. Implementamos un enrutamiento dinámico: si un servicio downstream fallaba, teníamos configurados reintentos automáticos, circuit breakers y estrategias de degradación elegante (fallbacks). Además, estandarizamos el manejo de errores transversalmente: ninguna excepción interna o volcado de pila llegaba al usuario final. Todo se interceptaba, se mapeaba a respuestas HTTP consistentes y se inyectaba con contexto enriquecido hacia nuestra plataforma de logs.
+> Todo este enrutamiento y manejo de errores se apoyaba en una capa fuerte de monitorización que nos permitía trazar cada petición, auditar en tiempo real cuándo el sistema activaba un fallback y reaccionar ante cualquier problema.
+> Por último, la seguridad fue un pilar innegociable. Protegimos la entrada a los microservicios con autenticación estricta (JWT) y rate limiting desde un API Gateway. Y a nivel de datos, aplicamos el principio de menor privilegio: desacoplamos por completo la orquestación de las bases de datos utilizando protocolos estandarizados (como MCP), interactuando únicamente a través de interfaces validadas y de solo lectura para aislar riesgos operativos.
 
-Después pasé a una plataforma de gaming online en tiempo real, donde estuve enfocado principalmente en backend con Python y FastAPI. Diseñamos una arquitectura basada en microservicios desplegada en Amazon Web Services usando contenedores en Amazon ECS. Ahí trabajábamos con task definitions para definir los servicios, gestionar recursos y escalar según la carga.
+_Notas técnicas para la entrevista:_
 
-A nivel de arquitectura, combinábamos servicios persistentes con funciones en AWS Lambda para tareas asíncronas. Por ejemplo, cuando ocurrían eventos en la plataforma, los enviábamos a colas en SQS para desacoplar el procesamiento, lo que nos ayudaba a mejorar la resiliencia y evitar bloquear las APIs.
+- _Arquitectura: Arquitectura Hexagonal (Ports and Adapters) para desacoplamiento de equipos y dominios. Orquestador supervisor (LangGraph) para IA._
+- _Resiliencia y Errores: Circuit breakers, retry policies, fallbacks y Global Exception Handlers para estandarizar respuestas de error._
+- _Observabilidad: Alertas sobre fallbacks activados, logs estructurados y monitorización activa de latencias inter-servicio._
+- _Seguridad: API Gateway (JWT, Rate Limiting) y aislamiento total de la base de datos (PostgreSQL/pgvector) usando MCP con roles Read-Only._
+- _Rendimiento: Flujos asíncronos y respuestas en streaming (SSE) a través de FastAPI para optimizar la latencia._
 
-También usamos Amazon S3 para almacenamiento y Redis como sistema de cache para reducir latencias en operaciones críticas. Uno de los retos fue optimizar el uso de Lambda, especialmente por los cold starts, que mitigábamos manteniendo funciones ligeras y reutilizando recursos cuando era posible.
-
-> Elegimos Amazon ECS porque necesitábamos un equilibrio entre control y simplicidad. Teníamos varios servicios backend en Python que requerían cierta estabilidad y control de recursos, por lo que un enfoque basado en contenedores encajaba mejor que serverless puro. Evaluamos opciones como Lambda, pero para servicios persistentes con tráfico constante preferimos ECS para evitar problemas como cold starts y limitaciones de ejecución.
-> Además, ECS nos permitía definir fácilmente los servicios mediante task definitions, controlar CPU/memoria y escalar horizontalmente según carga.
-
-> En cuanto al CI/CD, teníamos un pipeline donde: construíamos la imagen Docker la subíamos a un registry (ECR) y luego desplegábamos actualizando la task definition del servicio en ECS
-
-> Esto nos permitía tener despliegues reproducibles y versionados.
-
-# Sistema de onboarding basado en microservicios con RAG y AWS Bedrock
-
-Recientemente, trabajé en un sistema de Onboarding basado en microservicios. Aunque la plataforma principal estaba en Node.js, fui responsable junto con un equipo de diseñar y desarrollar un microservicio especializado en IA utilizando **FastAPI y LangGraph**.
-
-El núcleo de este servicio era un sistema de asistencia inteligente. Para orquestar la lógica compleja, implementamos una arquitectura multi-agente utilizando **LangGraph** siguiendo un patrón de supervisión. En lugar de tener un solo flujo lineal de RAG, diseñamos un grafo de ejecución gobernado por un **Agente Supervisor**. Este supervisor evaluaba la intención del usuario, delegaba las tareas y monitoreaba continuamente el trabajo de dos agentes especializados:
-
-- Un **Agente RAG** para búsqueda semántica sobre la documentación interna de onboarding (usando embeddings y pgvector como bases de datos vectorial, exploramos alternativas como chromedb, pero pgvector nos dio mejor rendimiento y control).
-- Un **Agente Text2SQL** encargado de traducir lenguaje natural a consultas SQL para responder preguntas sobre el progreso del usuario o datos específicos del dominio(evaluaciones, brechas, etc).
-
-Para que estos agentes pudieran interactuar con nuestros sistemas, desarrollamos un conjunto de **Tools (herramientas personalizadas)** mediante _Function Calling_. Estas tools eran funciones en Python, fuertemente tipadas con Pydantic, que encapsulaban la lógica de conexión a la base de datos o al motor de búsqueda vectorial.
-
-Además, para mantener los microservicios verdaderamente desacoplados, implementamos estas integraciones con **MCP (Model Context Protocol)**. Esto nos permitió separar la lógica de orquestación de la IA (en LangGraph) de las fuentes de datos; los agentes simplemente se conectaban a un servidor MCP que exponía los recursos y las herramientas de forma estandarizada y segura.
-
-El Agente Supervisor no solo enrutaba, sino que revisaba las respuestas de estos sub-agentes. Si la información era incompleta o había un error de ejecución en alguna de las tools, el supervisor era capaz de ordenarles iterar y corregir el fallo antes de devolver el resultado final al usuario.
-
-Integré los LLMs a través de **AWS Bedrock**, lo que nos permitía usar modelos fundacionales (como la familia Claude de Anthropic) de forma segura y sin que los datos salieran de nuestro entorno de AWS.
-
-Uno de los retos técnicos fue la **gestión de la memoria y el estado**. Gracias a LangGraph, implementamos un estado conversacional persistente (state graphs). Esto permitía que los agentes mantuvieran el contexto de interacciones pasadas, recordando qué pasos del onboarding ya había completado el usuario. Expusimos todo este flujo complejo a través de endpoints en FastAPI, manejando respuestas en streaming (Server-Sent Events) para reducir la latencia percibida por el usuario. Además, implementamos **Autenticación (JWT) y Rate Limiting** a nivel de API Gateway y middleware de FastAPI para proteger los endpoints contra abusos y garantizar un uso justo de los recursos del LLM.
+---
 
 **Pregunta:** Tu sistema de agentes está costando mucho dinero al mes. Tu jefe te pide reducir costos sin degradar la calidad. ¿Qué haces?
 **Respuesta:** Primero optimizo el sistema, luego el modelo si es necesario.
@@ -78,6 +70,12 @@ Investigo los costos de:
 - **Fallback Routing (Nivel Grafo):** LangGraph permite definir rutas alternativas (conditional edges) y nodos de fallback. Si un sub-agente o servidor MCP no responde tras los reintentos permitidos, el flujo se redirige automáticamente a una estrategia de contingencia.
 - **Degradación Elegante:** Si, por ejemplo, el sistema que responde consultas SQL está caído, el Supervisor puede hacer "fallback" hacia el Agente RAG para intentar responder usando solo conocimiento documentado, o bien devolver un mensaje amigable al usuario ("Actualmente no puedo acceder a tus datos de progreso, pero...") en lugar de mostrar un error 500 y romper la experiencia.
 - **Circuit Breaker y Timeouts (Nivel Infraestructura):** En las conexiones de FastAPI hacia AWS Bedrock o servidores MCP, aplicamos timeouts estrictos y un patrón Circuit Breaker. Si un servicio externo falla repetidamente, el circuito se abre para fallar rápido (fail-fast) y no agotar los recursos del servidor (hilos/conexiones).
+
+# Preguntas:
+
+- ¿Cuáles son hoy los principales desafíos técnicos del equipo?
+- ¿Cómo manejan confiabilidad y observabilidad en producción?
+- ¿Qué nivel de participación tienen los desarrolladores en despliegues y soporte operacional?
 
 ---
 
@@ -125,42 +123,6 @@ Usábamos _Function Calling_ nativo de los modelos (a través de Bedrock). En Py
 # ¿Por qué usar MCP (Model Context Protocol) en lugar de integrarlo directamente?
 
 En una arquitectura de microservicios, no queríamos que el microservicio de IA tuviera las credenciales y la lógica directa de acceso a todas las bases de datos o APIs de la empresa. Usando MCP, creamos servidores MCP ligeros cerca de las fuentes de datos. El microservicio de LangGraph actuaba como un cliente MCP. Esto nos dio un estándar unificado: si mañana añadíamos una nueva herramienta (por ejemplo, consultar Jira), solo desplegábamos un servidor MCP para Jira, sin tener que reescribir la lógica del agente supervisor.
-
-1. START: Análisis de costos en un sistema de agentes con AWS Bedrock
-   Modelo LLM: Claude 3 Sonnet (más económico que Opus, pero de calidad empresarial)
-   Uso: 100,000 a 500,000 interacciones/mes (típico en onboarding o soporte interno)
-   Tokens por interacción: 2,000 tokens promedio (entrada + salida)
-   Agentes: Orquestación multi-agente, cada interacción puede implicar 2-3 llamadas al LLM (supervisor, RAG, Text2SQL)
-   Otros costos: Almacenamiento de embeddings (pgvector), cómputo (ECS/Lambda), tráfico de red, pero el mayor costo es LLM.
-2. Cálculo de costos Bedrock (Claude 3 Sonnet, mayo 2026)
-   Precio aproximado: $2.00 USD por 1 millón de tokens (entrada), $6.00 USD por 1 millón de tokens (salida)
-   Tokens totales/mes: 100,000 interacciones × 2,000 tokens × 2 agentes = 400 millones tokens/mes
-   Distribución: 50% entrada, 50% salida
-   Costo tokens entrada:
-   200 millones tokens × $2.00 / 1M = $400
-   Costo tokens salida:
-   200 millones tokens × $6.00 / 1M = $1,200
-   Total Bedrock LLM:
-   $1,600 USD/mes (solo inferencia LLM)
-3. Otros costos relevantes
-   Embeddings: Si usas Titan Embeddings, calcula $0.10 por 1,000 vectorizaciones (mucho menor que LLM).
-   ECS/Lambda: $100–$500/mes según tráfico y tamaño de los servicios.
-   Almacenamiento (pgvector, S3): $10–$100/mes.
-   Tráfico de red: Generalmente bajo en AWS interno.
-4. Optimización de costos y latencia (para STAR)
-   Situación: El gasto mensual superaba los $2,000 USD y la latencia era alta por múltiples agentes y tokens.
-   Tarea: Reducir el costo sin sacrificar calidad ni experiencia de usuario.
-   Acción:
-   Cambié el modelo de Opus a Sonnet tras pruebas de calidad.
-   Implementé cache de respuestas y embeddings para evitar llamadas redundantes.
-   Reduje el contexto enviado (chunking inteligente, resúmenes).
-   Usé modelos ligeros para validaciones y enrutamiento, reservando el LLM potente solo para tareas complejas.
-   Ajusté el número de agentes y llamadas por flujo.
-   Implementé SSE para respuestas en streaming, mejorando la percepción de latencia.
-   Resultado:
-   Reduje el costo LLM en un 40% (~$1,000 USD/mes).
-   Bajé la latencia percibida de 5s a menos de 2s.
-   Mantuvimos la calidad de las respuestas y la satisfacción del usuario.
 
 ---
 
@@ -229,3 +191,24 @@ Usaría AWS Lambda para cargas event-driven, intermitentes o tareas desacopladas
 Y Amazon ECS para servicios persistentes, con tráfico constante o cuando necesito más control sobre runtime, recursos o dependencias.
 
 En muchos casos, lo ideal es combinarlos según el tipo de workload.
+
+# STAR
+
+Situación:
+Durante un pico inesperado de tráfico en la plataforma transaccional, varios usuarios reportaron lentitud y retrasos en la generación de reportes y notificaciones. El monitoreo en CloudWatch mostró un aumento en la latencia y mensajes acumulados en las colas SQS.
+
+Tarea:
+Identificar el cuello de botella y garantizar que los procesos asíncronos (reportes y notificaciones) se procesaran a tiempo, evitando que el sistema se saturara y afectara la experiencia del usuario.
+
+Acción:
+
+Analicé las métricas de CloudWatch y detecté que la cantidad de mensajes pendientes en SQS superaba el umbral habitual.
+Ajusté la configuración de auto scaling en ECS para aumentar temporalmente el número de tareas consumidoras de SQS.
+Optimizamos el código de los microservicios Python para hacerlos idempotentes y reducir el tiempo de procesamiento por mensaje.
+Implementé alertas adicionales en Slack para detectar rápidamente futuros cuellos de botella en las colas.
+Documenté el incidente y la solución en el runbook del equipo para futuras referencias.
+Resultado:
+
+El backlog de mensajes en SQS se procesó rápidamente y la latencia volvió a niveles normales.
+Los usuarios dejaron de reportar retrasos y el sistema mantuvo su resiliencia ante futuros picos de tráfico.
+El equipo ganó mayor visibilidad y capacidad de reacción ante incidentes similares, mejorando la operación y la confianza en la plataforma.
